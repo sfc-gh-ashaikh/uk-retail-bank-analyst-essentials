@@ -34,7 +34,7 @@ SELECT
 FROM RAW.TRANSACTIONS t
 JOIN RAW.ACCOUNTS     a ON t.account_id = a.account_id
 WHERE t.status = 'CLEARED'
-  AND t.transaction_date >= '2026-04-01'
+  AND t.transaction_date >= DATEADD('day', -30, CURRENT_DATE())
 GROUP BY a.account_type;
 
 -- =============================================================================
@@ -57,8 +57,8 @@ SELECT
     ROUND(SUM(amount_gbp), 2) AS total_gbp
 FROM RAW.TRANSACTIONS
 WHERE status = 'CLEARED'
-  AND transaction_date >= '2026-04-01'
-  AND transaction_date <  '2026-04-28'
+  AND transaction_date >= DATEADD('day', -14, CURRENT_DATE())
+  AND transaction_date <  CURRENT_DATE()
 GROUP BY merchant_category
 ORDER BY total_gbp DESC;
 
@@ -153,8 +153,8 @@ WHERE status = 'CLEARED';
 SELECT COUNT(*), SUM(amount_gbp)
 FROM RAW.TRANSACTIONS
 WHERE status = 'CLEARED'
-  AND transaction_date >= '2026-04-01'
-  AND transaction_date <  '2026-04-15';
+  AND transaction_date >= DATEADD('day', -14, CURRENT_DATE())
+  AND transaction_date <  CURRENT_DATE();
 
 -- Check both queries in Query History — compare:
 --   partitions_scanned vs partitions_total

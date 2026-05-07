@@ -138,13 +138,13 @@ GROUP BY a.account_type;
 -- ANTI-PATTERN: DATE_TRUNC on the column defeats micro-partition pruning
 SELECT COUNT(*)
 FROM RAW.TRANSACTIONS
-WHERE DATE_TRUNC('month', transaction_date) = '2026-03-01';
+WHERE DATE_TRUNC('month', transaction_date) = DATE_TRUNC('month', DATEADD('month', -1, CURRENT_DATE()));
 
 -- BEST PRACTICE: range predicate on the raw column — Snowflake prunes partitions
 SELECT COUNT(*)
 FROM RAW.TRANSACTIONS
-WHERE transaction_date >= '2026-03-01'
-  AND transaction_date <  '2026-04-01';
+WHERE transaction_date >= DATE_TRUNC('month', DATEADD('month', -1, CURRENT_DATE()))
+  AND transaction_date <  DATE_TRUNC('month', CURRENT_DATE());
 
 -- =============================================================================
 -- PATTERN 6: CTEs FOR READABILITY AND REUSE

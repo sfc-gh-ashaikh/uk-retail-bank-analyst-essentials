@@ -14,6 +14,7 @@
 USE DATABASE NORTHBRIDGE_BANK_HOL;
 USE SCHEMA RAW;
 USE WAREHOUSE NORTHBRIDGE_WH;
+USE ROLE SYSADMIN;
 
 -- =============================================================================
 -- 1. PRODUCTS TABLE
@@ -68,6 +69,7 @@ CREATE OR REPLACE TABLE RAW.CUSTOMERS (
     address_line2       VARCHAR(100),
     city                VARCHAR(50),
     postcode            VARCHAR(10)     NOT NULL,
+    region              VARCHAR(30)     NOT NULL,
     ni_number           VARCHAR(13)     NOT NULL,
     kyc_status          VARCHAR(20)     NOT NULL,
     kyc_verified_date   DATE,
@@ -101,11 +103,37 @@ last_names AS (
 ),
 cities AS (
     SELECT c.* FROM (VALUES
-        ('London'),('Manchester'),('Birmingham'),('Leeds'),('Liverpool'),('Sheffield'),('Bristol'),('Edinburgh'),
-        ('Glasgow'),('Cardiff'),('Leicester'),('Nottingham'),('Newcastle'),('Brighton'),('Southampton'),
-        ('Oxford'),('Cambridge'),('Reading'),('Coventry'),('Bradford'),('Hull'),('Derby'),('Plymouth'),
-        ('Stoke-on-Trent'),('Wolverhampton'),('Belfast'),('Portsmouth'),('Norwich'),('Milton Keynes'),('Swindon')
-    ) AS c(v)
+        ('London',          'LONDON'),
+        ('Manchester',      'NORTH_WEST'),
+        ('Birmingham',      'WEST_MIDLANDS'),
+        ('Leeds',           'YORKSHIRE'),
+        ('Liverpool',       'NORTH_WEST'),
+        ('Sheffield',       'YORKSHIRE'),
+        ('Bristol',         'SOUTH_WEST'),
+        ('Edinburgh',       'SCOTLAND'),
+        ('Glasgow',         'SCOTLAND'),
+        ('Cardiff',         'WALES'),
+        ('Leicester',       'EAST_MIDLANDS'),
+        ('Nottingham',      'EAST_MIDLANDS'),
+        ('Newcastle',       'NORTH_EAST'),
+        ('Brighton',        'SOUTH_EAST'),
+        ('Southampton',     'SOUTH_EAST'),
+        ('Oxford',          'SOUTH_EAST'),
+        ('Cambridge',       'EAST'),
+        ('Reading',         'SOUTH_EAST'),
+        ('Coventry',        'WEST_MIDLANDS'),
+        ('Bradford',        'YORKSHIRE'),
+        ('Hull',            'YORKSHIRE'),
+        ('Derby',           'EAST_MIDLANDS'),
+        ('Plymouth',        'SOUTH_WEST'),
+        ('Stoke-on-Trent',  'WEST_MIDLANDS'),
+        ('Wolverhampton',   'WEST_MIDLANDS'),
+        ('Belfast',         'NORTHERN_IRELAND'),
+        ('Portsmouth',      'SOUTH_EAST'),
+        ('Norwich',         'EAST'),
+        ('Milton Keynes',   'SOUTH_EAST'),
+        ('Swindon',         'SOUTH_WEST')
+    ) AS c(v, region)
 ),
 postcode_areas AS (
     SELECT p.* FROM (VALUES
@@ -145,6 +173,7 @@ names_joined AS (
         g.dob,
         g.cust_since,
         ci.v AS city,
+        ci.region,
         pa.v AS pc_area,
         g.pc_suffix,
         g.kyc_rand,
@@ -154,7 +183,7 @@ names_joined AS (
     FROM gen g
     LEFT JOIN (SELECT v, ROW_NUMBER() OVER (ORDER BY SEQ4()) AS idx FROM first_names) fn ON (g.fn_idx = fn.idx)
     LEFT JOIN (SELECT v, ROW_NUMBER() OVER (ORDER BY SEQ4()) AS idx FROM last_names)  ln ON (g.ln_idx = ln.idx)
-    LEFT JOIN (SELECT v, ROW_NUMBER() OVER (ORDER BY SEQ4()) AS idx FROM cities)      ci ON (g.city_idx = ci.idx)
+    LEFT JOIN (SELECT v, region, ROW_NUMBER() OVER (ORDER BY SEQ4()) AS idx FROM cities) ci ON (g.city_idx = ci.idx)
     LEFT JOIN (SELECT v, ROW_NUMBER() OVER (ORDER BY SEQ4()) AS idx FROM postcode_areas) pa ON (g.pc_idx = pa.idx)
 )
 SELECT
@@ -169,6 +198,7 @@ SELECT
     city,
     pc_area || ' ' || LPAD((ABS(RANDOM()) % 9 + 1)::VARCHAR, 1, '0') ||
         CHAR(65 + UNIFORM(0,25,RANDOM())) || CHAR(65 + UNIFORM(0,25,RANDOM())) AS postcode,
+    COALESCE(region, 'LONDON')                      AS region,
     ni_number,
     CASE WHEN kyc_rand < 80 THEN 'VERIFIED'
          WHEN kyc_rand < 92 THEN 'PENDING'

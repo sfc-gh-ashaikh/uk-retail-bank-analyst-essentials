@@ -128,9 +128,13 @@ WHERE status = 'CLEARED'
 GROUP BY merchant_category
 ORDER BY total_gbp DESC;
 
--- Fix: use a literal date instead of CURRENT_DATE() if the value won't change
+-- Fix: use a literal date instead of CURRENT_DATE() so the result is cacheable.
+-- Type today's date as a string literal (e.g. '2026-05-07') — do NOT use CURRENT_DATE()
+-- The example below uses a session variable so the script works on any day:
+SET report_dt = CURRENT_DATE()::VARCHAR;
+
 SELECT
-    '2026-04-28'::DATE     AS report_date,
+    $report_dt::DATE       AS report_date,
     merchant_category,
     COUNT(*)               AS txn_count,
     ROUND(SUM(amount_gbp), 2) AS total_gbp
@@ -140,9 +144,9 @@ WHERE status = 'CLEARED'
 GROUP BY merchant_category
 ORDER BY total_gbp DESC;
 
--- Run the literal-date version again — CACHE HIT (identical SQL, deterministic)
+-- Run the same query again — CACHE HIT (same SQL text, deterministic expression)
 SELECT
-    '2026-04-28'::DATE     AS report_date,
+    $report_dt::DATE       AS report_date,
     merchant_category,
     COUNT(*)               AS txn_count,
     ROUND(SUM(amount_gbp), 2) AS total_gbp

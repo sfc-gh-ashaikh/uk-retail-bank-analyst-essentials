@@ -140,7 +140,7 @@ SELECT
 
 Click the **Run** button or press **Cmd + Enter** (Mac) / **Ctrl + Enter** (Windows).
 
-You should see your user, role and warehouse returned. If the warehouse shows `null`, select `NORTHBRIDGE_WH` from the warehouse dropdown in the top bar.
+You should see your user, role and warehouse returned. If the warehouse shows `null`, select any available warehouse from the dropdown in the top bar (we will create the lab warehouse `NORTHBRIDGE_WH` in Step 3).
 
 <!-- ------------------------ -->
 ## Step 2: Using Workspaces for Code Development
@@ -202,6 +202,8 @@ At the top of every worksheet is a context bar showing:
 ```
 Role: SYSADMIN  |  Warehouse: NORTHBRIDGE_WH  |  Database: NORTHBRIDGE_BANK_HOL  |  Schema: RAW
 ```
+
+> **Note**: This context will be available after completing Step 3 (setup). For now, just know where to find it.
 
 Setting this context means you can write `SELECT * FROM CUSTOMERS` instead of the fully qualified `SELECT * FROM NORTHBRIDGE_BANK_HOL.RAW.CUSTOMERS`. For this lab, always verify your context before running a script.
 
@@ -513,14 +515,14 @@ A correlated subquery executes once per row in the outer query. A JOIN with GROU
 ```sql
 SELECT customer_id FROM RAW.ACCOUNTS WHERE status = 'ACTIVE'
 UNION
-SELECT customer_id FROM RAW.LOANS WHERE loan_status = 'CURRENT';
+SELECT customer_id FROM RAW.LOANS WHERE status = 'PERFORMING';
 ```
 
 **Best practice:**
 ```sql
 SELECT customer_id FROM RAW.ACCOUNTS WHERE status = 'ACTIVE'
 UNION ALL
-SELECT customer_id FROM RAW.LOANS WHERE loan_status = 'CURRENT';
+SELECT customer_id FROM RAW.LOANS WHERE status = 'PERFORMING';
 ```
 
 `UNION` sorts and deduplicates the result set. `UNION ALL` does not. If you know duplicates are acceptable (or impossible), use `UNION ALL` to avoid the unnecessary sort. If you do need distinct values, wrap with an explicit `SELECT DISTINCT`.
@@ -535,7 +537,7 @@ FROM (
     FROM RAW.TRANSACTIONS t
     JOIN RAW.ACCOUNTS a ON t.account_id = a.account_id
 ) sub
-WHERE sub.transaction_date >= '2025-01-01';
+WHERE sub.transaction_date >= DATEADD('month', -3, CURRENT_DATE());
 ```
 
 **Best practice:**
@@ -543,7 +545,7 @@ WHERE sub.transaction_date >= '2025-01-01';
 SELECT t.transaction_id, t.amount_gbp, a.account_type
 FROM RAW.TRANSACTIONS t
 JOIN RAW.ACCOUNTS a ON t.account_id = a.account_id
-WHERE t.transaction_date >= '2025-01-01';
+WHERE t.transaction_date >= DATEADD('month', -3, CURRENT_DATE());
 ```
 
 Apply filters as early as possible -- ideally in the WHERE clause of the innermost query. This reduces the number of rows flowing through joins and aggregations. Snowflake's optimiser can push predicates down in many cases, but writing the filter in the right place ensures it always happens.
@@ -554,16 +556,16 @@ Apply filters as early as possible -- ideally in the WHERE clause of the innermo
 ```sql
 SELECT *
 FROM RAW.TRANSACTIONS
-WHERE YEAR(transaction_date) = 2025
-  AND MONTH(transaction_date) = 6;
+WHERE YEAR(transaction_date) = YEAR(CURRENT_DATE())
+  AND MONTH(transaction_date) = MONTH(CURRENT_DATE()) - 1;
 ```
 
 **Best practice:**
 ```sql
 SELECT *
 FROM RAW.TRANSACTIONS
-WHERE transaction_date >= '2025-06-01'
-  AND transaction_date <  '2025-07-01';
+WHERE transaction_date >= DATE_TRUNC('month', DATEADD('month', -1, CURRENT_DATE()))
+  AND transaction_date <  DATE_TRUNC('month', CURRENT_DATE());
 ```
 
 A **SARGable** (Search ARGument able) filter allows the engine to use partition pruning. Wrapping a column in a function (`YEAR()`, `MONTH()`, `UPPER()`) prevents the optimiser from pruning partitions efficiently. Use range predicates on raw column values instead.
@@ -935,7 +937,7 @@ SELECT
     ROUND(SUM(t.amount_gbp), 2) AS total_gbp
 FROM RAW.TRANSACTIONS  t
 JOIN RAW.ACCOUNTS      a ON t.account_id = a.account_id
-WHERE t.transaction_date >= '2025-01-01'
+WHERE t.transaction_date >= DATEADD('month', -3, CURRENT_DATE())
 GROUP BY a.account_type;
 ```
 
@@ -968,15 +970,15 @@ Run these two queries and compare their profiles:
 ```sql
 SELECT COUNT(*), SUM(amount_gbp)
 FROM RAW.TRANSACTIONS
-WHERE YEAR(transaction_date) = 2025;
+WHERE YEAR(transaction_date) = YEAR(CURRENT_DATE());
 ```
 
 **With pruning (range predicate):**
 ```sql
 SELECT COUNT(*), SUM(amount_gbp)
 FROM RAW.TRANSACTIONS
-WHERE transaction_date >= '2025-01-01'
-  AND transaction_date <  '2026-01-01';
+WHERE transaction_date >= DATE_TRUNC('year', CURRENT_DATE())
+  AND transaction_date <  DATEADD('year', 1, DATE_TRUNC('year', CURRENT_DATE()));
 ```
 
 Check the `Partitions scanned` vs `Partitions total` in the Query Profile for each. The range predicate version should scan fewer partitions -- this is the SARGable pattern from Step 5 in action.
