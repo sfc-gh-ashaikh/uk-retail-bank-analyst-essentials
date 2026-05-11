@@ -11,7 +11,7 @@ Not all data arrives via pipelines. Reference data -- like regulatory rate table
 
 Sarah's email: *"The PRA published revised LCR run-off rates this morning. The data engineers are busy, so I need you to load this yourself. The file is lcr_runoff_rates.csv -- 25 rows of prescribed stress rates. Use a stage and COPY INTO so the process is repeatable when rates change next year."*
 
-Download `lcr_runoff_rates.csv` from the `scripts/` folder of this repository to your local machine.
+[Download lcr_runoff_rates.csv](assets/lcr_runoff_rates.csv) to your local machine.
 
 Open your `03_FILE_LOAD` worksheet and run the following section by section:
 

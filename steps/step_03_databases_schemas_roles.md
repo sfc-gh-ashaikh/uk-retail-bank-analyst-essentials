@@ -715,10 +715,33 @@ You should see approximately:
 
 ## Explore the Data
 
-Click on **Data > NORTHBRIDGE_BANK_HOL > RAW > CUSTOMERS** in the left panel. Click the **Data Preview** tab to see sample rows.
+Now that the data is loaded, let's put two of the key Snowsight features from Step 1 into practice.
+
+### Data Explorer
+
+Click **Data** in the left nav. Navigate to **NORTHBRIDGE_BANK_HOL > RAW > CUSTOMERS**. Click the table name to see:
+
+- **Columns** tab -- column names and data types
+- **Data Preview** tab -- sample rows without writing any SQL
+- **Column** tab -- min/max values, NULL counts, distinct counts
 
 Notice the UK-specific data:
 - `NI_NUMBER` -- UK National Insurance number format (`XX 00 00 00 X`)
 - `POSTCODE` -- UK postcode format (e.g. `EC1A 1BB`)
 - `SORT_CODE` -- UK bank sort code format (`20-XX-XX`) in the ACCOUNTS table
 - All monetary amounts are in GBP
+
+Now browse **ACCOUNTS** and **TRANSACTIONS** the same way. Click the **Data Preview** tab on each to see sample rows. This is the fastest way to understand what data is available and check column names before writing a query. Sarah's advice: *"Always check the Data panel before writing a query. Half the time, the column you need has a different name than you expect."*
+
+### Query History
+
+Click **Monitoring > Query History** in the left nav. You should now see several queries from the setup and data generation you just ran. This view shows:
+
+- Execution status (Succeeded / Failed / Queued)
+- Duration and bytes scanned
+- The warehouse used
+- The full SQL text (click any row to expand)
+
+Find the data generation query (the one that took the longest -- likely the TRANSACTIONS insert). Click it to see the execution time and bytes scanned. As an analyst, Query History is your best friend for understanding your own query performance. You can filter by user, warehouse or status to find slow queries, failed attempts, or patterns in your work over time.
+
+Sarah mentions that the compliance team occasionally asks for evidence of who ran what query and when -- Query History is where that audit trail lives. You will use Query History extensively in Steps 6, 7 and 8 to compare execution times and diagnose performance.
