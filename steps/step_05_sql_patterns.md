@@ -1,3 +1,13 @@
+# Step 5: SQL Best Practices and Anti-Patterns
+**Duration: 25 minutes**
+
+> **Wednesday Morning** -- Sarah forwards you a set of queries from the legacy reporting system that were migrated as-is. A senior analyst, **James Okafor**, reviewed them during a code review and flagged eight anti-patterns. He sends you a message: *"These all produce correct results, but they are slow, hard to read, or both. Your task: rewrite each one following Snowflake best practices. Run both versions and compare execution times -- that is the evidence we need to justify the cleanup to the team."*
+
+Writing correct SQL is one thing. Writing efficient SQL is another. In this step you will work through eight common patterns, each demonstrated with an anti-pattern and the corresponding best practice.
+
+Open your `05_SQL_PATTERNS` worksheet and run the following section by section:
+
+```sql
 -- =============================================================================
 -- NorthBridge Bank HOL: Step 5 - SQL Best Practices & Anti-Patterns
 --
@@ -291,3 +301,38 @@ WHERE status = 'ACTIVE'
 QUALIFY ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY balance_gbp DESC) = 1
 ORDER BY balance_gbp DESC
 LIMIT 10;
+```
+
+### Pattern 1: SELECT * vs Explicit Columns
+
+`SELECT *` reads every column, including those you do not need. On wide tables this wastes I/O and memory. It also breaks downstream code if columns are added or renamed. Always name the columns you need.
+
+### Pattern 2: Correlated Subqueries vs JOINs
+
+A correlated subquery executes once per row in the outer query. A JOIN with GROUP BY allows the optimiser to process both tables in a single pass. On 10,000 customers, the difference is significant.
+
+### Pattern 3: UNION vs UNION ALL
+
+`UNION` sorts and deduplicates the result set. `UNION ALL` does not. If you know duplicates are acceptable (or impossible), use `UNION ALL` to avoid the unnecessary sort.
+
+### Pattern 4: Filter Early (Predicate Pushdown)
+
+Apply filters as early as possible -- ideally in the WHERE clause of the innermost query. This reduces the number of rows flowing through joins and aggregations.
+
+### Pattern 5: SARGable Filters
+
+A **SARGable** (Search ARGument able) filter allows the engine to use partition pruning. Wrapping a column in a function (`YEAR()`, `MONTH()`, `UPPER()`) prevents the optimiser from pruning partitions efficiently. Use range predicates on raw column values instead.
+
+### Pattern 6: CTEs for Readability
+
+CTEs (Common Table Expressions) break complex logic into named, readable steps. Each CTE is a self-contained unit that can be tested independently. This is especially important in banking where queries must be auditable and explainable.
+
+### Pattern 7: Window Functions vs Self-Joins
+
+Window functions (`LAG`, `LEAD`, `ROW_NUMBER`, `RANK`, `SUM() OVER`) let you reference other rows in the result set without self-joining. They are more readable, more efficient, and less error-prone than the self-join equivalent.
+
+### Pattern 8: QUALIFY for Deduplication
+
+`QUALIFY` is Snowflake's clause for filtering on window function results -- analogous to `HAVING` for aggregations. It eliminates the need for a subquery wrapper, making deduplication queries shorter and clearer.
+
+> **Summary**: Run both the anti-pattern and best-practice versions of each query. Compare execution times in the Query History panel. The differences become more pronounced as data volumes grow.

@@ -1,3 +1,13 @@
+# Step 8: Query Profiling and Performance Monitoring
+**Duration: 20 minutes**
+
+> **Thursday Afternoon** -- Sarah pulls you into a quick call: *"The monthly board report queries are running slower than expected. Before we throw a bigger warehouse at the problem, I need you to profile the queries and tell me what is actually happening -- are we scanning too many partitions? Is anything spilling to disk? Use the Query Profile and QUERY_HISTORY to diagnose it. If you can find the bottleneck, we fix the SQL instead of spending more on compute."*
+
+Knowing how to write efficient SQL is one skill. Knowing how to diagnose a slow query is another. This step teaches you to use Snowflake's built-in profiling and monitoring tools.
+
+Open your `08_QUERY_PROFILING` worksheet and run the following section by section:
+
+```sql
 -- =============================================================================
 -- NorthBridge Bank HOL: Step 8 - Query Profiling & Performance Monitoring
 --
@@ -209,3 +219,31 @@ LIMIT 10;
 --   [ ] Query Profile: percentage scanned from cache
 --   [ ] Query History: compare elapsed time vs compilation vs execution
 --   [ ] Could a CTE or filter reduce the intermediate result set?
+```
+
+## Reading the Query Profile in Snowsight
+
+After running a query:
+1. Click the **Query ID** link in the results pane, or go to **Monitoring > Query History** and find the query
+2. Click the **Profile** tab
+
+The Query Profile shows a visual operator tree. Key things to look for:
+
+**Partition Pruning**: Look at the `TableScan` node. It shows `Partitions total` and `Partitions scanned`. If scanned is much less than total, your filter is enabling partition pruning -- the single biggest performance lever in Snowflake.
+
+**Percentage Scanned from Cache**: Shows how much data came from the warehouse cache vs remote storage.
+
+**Spilling**: If you see `Bytes spilled to local storage` or `Bytes spilled to remote storage`, the warehouse ran out of memory. This is a sign you need a larger warehouse for this query.
+
+## Performance Checklist
+
+When a query is slow, work through this checklist:
+
+| Check | How | Action |
+|---|---|---|
+| Missing filters? | Review WHERE clause | Add date ranges, status filters |
+| Function on filter column? | Look for `YEAR()`, `UPPER()` on WHERE columns | Rewrite as SARGable range predicate |
+| Partition pruning? | Query Profile > TableScan > partitions scanned vs total | Add or improve filter predicates |
+| Spilling? | Query Profile > operator nodes > bytes spilled | Scale up warehouse or reduce data volume |
+| Result cache available? | Check if same query ran recently | Re-run identical SQL to benefit from cache |
+| Warehouse too small? | Compare elapsed time across sizes | Scale up for the workload |
