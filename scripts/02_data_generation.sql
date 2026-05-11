@@ -239,16 +239,22 @@ CREATE OR REPLACE TABLE RAW.ACCOUNTS (
 );
 
 INSERT INTO RAW.ACCOUNTS
-WITH gen AS (
+WITH deposit_products AS (
+    SELECT product_id, product_type, lcr_liability_cat, risk_weight_pct,
+           ROW_NUMBER() OVER (ORDER BY product_id) AS idx
+    FROM RAW.PRODUCTS
+    WHERE product_type IN ('CURRENT','SAVINGS','ISA','BOND')
+),
+gen AS (
     SELECT
         ROW_NUMBER() OVER (ORDER BY SEQ4())       AS rn,
         UNIFORM(1, 10000, RANDOM())               AS customer_id,
-        UNIFORM(1, 20,    RANDOM())               AS product_id_raw,
         ABS(RANDOM()) % 900000 + 100000           AS sort_suffix,
         LPAD((ABS(RANDOM()) % 90000000 + 10000000)::VARCHAR, 8, '0') AS account_number,
         DATEADD(DAY, -(UNIFORM(30, 3650, RANDOM())), CURRENT_DATE()) AS opened_date,
         UNIFORM(0, 99, RANDOM())                  AS status_rand,
-        UNIFORM(0, 99, RANDOM())                  AS bal_tier
+        UNIFORM(0, 99, RANDOM())                  AS bal_tier,
+        (ABS(RANDOM()) % 12) + 1                  AS prod_idx
     FROM TABLE(GENERATOR(ROWCOUNT => 15000))
 ),
 enriched AS (
@@ -259,8 +265,7 @@ enriched AS (
         p.lcr_liability_cat AS lcr_liability_category,
         p.risk_weight_pct
     FROM gen g
-    JOIN RAW.PRODUCTS p ON p.product_id = g.product_id_raw
-    WHERE p.product_type IN ('CURRENT','SAVINGS','ISA','BOND')
+    JOIN deposit_products p ON p.idx = g.prod_idx
 )
 SELECT
     rn                  AS account_id,
@@ -344,7 +349,19 @@ typed AS (
             WHEN type_rand < 65 THEN 12
             WHEN type_rand < 82 THEN 13
             ELSE 14
-        END AS product_id
+        END AS product_id,
+        CASE
+            WHEN type_rand < 45 THEN UNIFORM(120, 300, RANDOM())
+            WHEN type_rand < 65 THEN UNIFORM(120, 300, RANDOM())
+            WHEN type_rand < 82 THEN UNIFORM(12,  84,  RANDOM())
+            ELSE                     UNIFORM(24,  60,  RANDOM())
+        END AS term_months,
+        CASE
+            WHEN type_rand < 45 THEN ROUND(UNIFORM(100000, 600000,  RANDOM())::FLOAT, 2)
+            WHEN type_rand < 65 THEN ROUND(UNIFORM(80000,  450000,  RANDOM())::FLOAT, 2)
+            WHEN type_rand < 82 THEN ROUND(UNIFORM(2000,   50000,   RANDOM())::FLOAT, 2)
+            ELSE                     ROUND(UNIFORM(5000,   40000,   RANDOM())::FLOAT, 2)
+        END AS original_amount_gbp
     FROM gen g
 )
 SELECT
@@ -352,37 +369,16 @@ SELECT
     t.customer_id,
     t.product_id,
     t.loan_type,
-    CASE
-        WHEN t.loan_type = 'MORTGAGE'     THEN ROUND(UNIFORM(100000, 600000,  RANDOM())::FLOAT, 2)
-        WHEN t.loan_type = 'BTL_MORTGAGE' THEN ROUND(UNIFORM(80000,  450000,  RANDOM())::FLOAT, 2)
-        WHEN t.loan_type = 'PERSONAL'     THEN ROUND(UNIFORM(2000,   50000,   RANDOM())::FLOAT, 2)
-        ELSE                                   ROUND(UNIFORM(5000,   40000,   RANDOM())::FLOAT, 2)
-    END                                         AS original_amount_gbp,
-    ROUND(
-        CASE
-            WHEN t.loan_type = 'MORTGAGE'     THEN UNIFORM(50000,  550000,  RANDOM())::FLOAT
-            WHEN t.loan_type = 'BTL_MORTGAGE' THEN UNIFORM(40000,  400000,  RANDOM())::FLOAT
-            WHEN t.loan_type = 'PERSONAL'     THEN UNIFORM(500,    45000,   RANDOM())::FLOAT
-            ELSE                                   UNIFORM(1000,   35000,   RANDOM())::FLOAT
-        END, 2)                                 AS outstanding_balance_gbp,
+    t.original_amount_gbp,
+    ROUND(t.original_amount_gbp * UNIFORM(10, 95, RANDOM())::FLOAT / 100, 2) AS outstanding_balance_gbp,
     CASE
         WHEN t.loan_type IN ('MORTGAGE','BTL_MORTGAGE') THEN ROUND(UNIFORM(199, 499, RANDOM())::FLOAT / 100, 4)
         WHEN t.loan_type = 'PERSONAL'                   THEN ROUND(UNIFORM(499, 1999,RANDOM())::FLOAT / 100, 4)
         ELSE                                                  ROUND(UNIFORM(599, 1499,RANDOM())::FLOAT / 100, 4)
     END                                         AS interest_rate_pct,
-    CASE
-        WHEN t.loan_type IN ('MORTGAGE','BTL_MORTGAGE') THEN UNIFORM(120, 300, RANDOM())
-        WHEN t.loan_type = 'PERSONAL'                   THEN UNIFORM(12,  84,  RANDOM())
-        ELSE                                                  UNIFORM(24,  60,  RANDOM())
-    END                                         AS term_months,
+    t.term_months,
     t.start_date,
-    DATEADD(MONTH,
-        CASE
-            WHEN t.loan_type IN ('MORTGAGE','BTL_MORTGAGE') THEN UNIFORM(120, 300, RANDOM())
-            WHEN t.loan_type = 'PERSONAL'                   THEN UNIFORM(12,  84,  RANDOM())
-            ELSE                                                  UNIFORM(24,  60,  RANDOM())
-        END,
-        t.start_date)                           AS maturity_date,
+    DATEADD(MONTH, t.term_months, t.start_date) AS maturity_date,
     CASE
         WHEN t.loan_type IN ('MORTGAGE','BTL_MORTGAGE') THEN ROUND(UNIFORM(400,   3000,  RANDOM())::FLOAT, 2)
         WHEN t.loan_type = 'PERSONAL'                   THEN ROUND(UNIFORM(100,   1200,  RANDOM())::FLOAT, 2)

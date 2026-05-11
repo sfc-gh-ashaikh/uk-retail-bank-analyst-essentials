@@ -1,0 +1,5 @@
+name: uk-retail-bank-analyst-essentials
+channels:
+  - snowflake
+dependencies:
+  - snowflake-snowpark-python

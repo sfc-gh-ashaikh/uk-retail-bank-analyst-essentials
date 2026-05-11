@@ -41,6 +41,25 @@ SELECT * FROM RAW.TRANSACTIONS LIMIT 10;
 
 -- B1: Customer summary view — useful for segmentation analysis
 CREATE OR REPLACE VIEW STAGING.V_CUSTOMER_SUMMARY AS
+WITH account_agg AS (
+    SELECT
+        customer_id,
+        COUNT(DISTINCT account_id) AS num_accounts,
+        ROUND(SUM(balance_gbp), 2) AS total_balance_gbp,
+        MIN(opened_date) AS earliest_account,
+        MAX(opened_date) AS latest_account
+    FROM RAW.ACCOUNTS
+    WHERE status = 'ACTIVE'
+    GROUP BY customer_id
+),
+loan_agg AS (
+    SELECT
+        customer_id,
+        COUNT(DISTINCT loan_id) AS num_loans,
+        ROUND(SUM(outstanding_balance_gbp), 2) AS total_loan_exposure_gbp
+    FROM RAW.LOANS
+    GROUP BY customer_id
+)
 SELECT
     c.customer_id,
     TRIM(c.first_name) || ' ' || TRIM(c.last_name) AS customer_name,
@@ -52,19 +71,16 @@ SELECT
     c.kyc_status,
     DATEDIFF('year', c.date_of_birth, CURRENT_DATE()) AS age_years,
     DATEDIFF('day', c.customer_since, CURRENT_DATE()) AS tenure_days,
-    COUNT(DISTINCT a.account_id)                    AS num_accounts,
-    ROUND(SUM(a.balance_gbp), 2)                    AS total_balance_gbp,
-    COUNT(DISTINCT l.loan_id)                       AS num_loans,
-    ROUND(COALESCE(SUM(l.outstanding_balance_gbp), 0), 2) AS total_loan_exposure_gbp,
-    MIN(a.opened_date)                              AS earliest_account,
-    MAX(a.opened_date)                              AS latest_account
+    COALESCE(a.num_accounts, 0)                     AS num_accounts,
+    COALESCE(a.total_balance_gbp, 0)                AS total_balance_gbp,
+    COALESCE(l.num_loans, 0)                        AS num_loans,
+    COALESCE(l.total_loan_exposure_gbp, 0)          AS total_loan_exposure_gbp,
+    a.earliest_account,
+    a.latest_account
 FROM RAW.CUSTOMERS   c
-LEFT JOIN RAW.ACCOUNTS a ON c.customer_id = a.customer_id
-    AND a.status = 'ACTIVE'
-LEFT JOIN RAW.LOANS l ON c.customer_id = l.customer_id
-WHERE c.is_active = TRUE
-GROUP BY c.customer_id, c.first_name, c.last_name, c.city, c.postcode,
-         c.segment, c.region, c.risk_rating, c.kyc_status, c.date_of_birth, c.customer_since;
+LEFT JOIN account_agg a ON c.customer_id = a.customer_id
+LEFT JOIN loan_agg    l ON c.customer_id = l.customer_id
+WHERE c.is_active = TRUE;
 
 SELECT segment, COUNT(*) AS customers, ROUND(AVG(total_balance_gbp), 2) AS avg_balance
 FROM STAGING.V_CUSTOMER_SUMMARY

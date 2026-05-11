@@ -68,19 +68,25 @@ A practical toolkit for data analysts working on Snowflake:
 
 ```
 uk-retail-bank-analyst-essentials/
-├── README.md                                              ← This file
-└── src/
-    ├── uk-retail-bank-analyst-essentials.md                ← Main guide (sfguides format)
-    └── assets/
-        ├── 01_setup.sql                                    ← Database, schemas, warehouse
-        ├── 02_data_generation.sql                          ← Synthetic dataset (~530k rows)
-        ├── lcr_runoff_rates.csv                            ← PRA reference data (25 rows)
-        ├── 03_file_load.sql                                ← Stage, file format, COPY INTO
-        ├── 04_tables_views_cloning.sql                     ← Tables, views, analytical views, cloning
-        ├── 05_sql_patterns.sql                             ← SQL best practices & anti-patterns
-        ├── 06_warehouse_scaling.sql                        ← Warehouse scaling exercises
-        ├── 07_caching.sql                                  ← Result cache, warehouse cache, metadata cache
-        └── 08_query_profiling.sql                          ← Query Profile, EXPLAIN, QUERY_HISTORY
+├── README.md
+├── LEGAL
+├── LICENSE
+├── notebooks/
+│   ├── environment.yml
+│   └── 0_start_here.ipynb
+├── streamlit/
+├── scripts/
+│   ├── setup.sql
+│   ├── 01_setup.sql
+│   ├── 02_data_generation.sql
+│   ├── 03_file_load.sql
+│   ├── 04_tables_views_cloning.sql
+│   ├── 05_sql_patterns.sql
+│   ├── 06_warehouse_scaling.sql
+│   ├── 07_caching.sql
+│   ├── 08_query_profiling.sql
+│   └── lcr_runoff_rates.csv
+└── _external_notebooks/
 ```
 
 ---
@@ -118,14 +124,14 @@ No prior Snowflake experience is required. Basic SQL familiarity (SELECT, JOIN, 
 Open the main guide file and follow each step in sequence:
 
 ```
-src/uk-retail-bank-analyst-essentials.md
+notebooks/0_start_here.ipynb
 ```
 
 The guide references each SQL asset file at the appropriate step.
 
 ### Option B — Run SQL Assets Directly
 
-Each SQL file in the `assets/` folder can be run independently in Snowsight. Run them in order (01 → 08).
+Each SQL file in the `scripts/` folder can be run independently in Snowsight. Run them in order (01 → 08).
 
 ---
 
