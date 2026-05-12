@@ -8,13 +8,13 @@
 --   RAW.CUSTOMERS     (~10,000 rows) - UK retail customers
 --   RAW.ACCOUNTS      (~15,000 rows) - Customer accounts
 --   RAW.LOANS         (~3,000 rows)  - Loan portfolio
---   RAW.TRANSACTIONS  (~500,000 rows)- 6 months of transaction history
+--   RAW.TRANSACTIONS  (~5,000,000 rows)- 2 years of transaction history
 -- =============================================================================
 
+USE ROLE SYSADMIN;
 USE DATABASE NORTHBRIDGE_BANK_HOL;
 USE SCHEMA RAW;
 USE WAREHOUSE NORTHBRIDGE_WH;
-USE ROLE SYSADMIN;
 
 -- =============================================================================
 -- 1. PRODUCTS TABLE
@@ -415,9 +415,10 @@ FROM typed t;
 
 -- =============================================================================
 -- 5. TRANSACTIONS TABLE
--- ~500,000 transactions covering 6 months of activity
--- This is the largest table - takes ~60 seconds to generate
+-- ~5,000,000 transactions covering 2 years of activity
+-- Scale up the warehouse for faster generation, then scale back down
 -- =============================================================================
+ALTER WAREHOUSE NORTHBRIDGE_WH SET WAREHOUSE_SIZE = 'MEDIUM';
 CREATE OR REPLACE TABLE RAW.TRANSACTIONS (
     transaction_id      VARCHAR(20)     NOT NULL PRIMARY KEY,
     account_id          NUMBER          NOT NULL,
@@ -481,13 +482,13 @@ gen AS (
     SELECT
         ROW_NUMBER() OVER (ORDER BY SEQ4())   AS rn,
         UNIFORM(1, 15000, RANDOM())           AS account_id,
-        DATEADD(DAY, -(UNIFORM(0, 180, RANDOM())), CURRENT_DATE()) AS txn_date,
+        DATEADD(DAY, -(UNIFORM(0, 730, RANDOM())), CURRENT_DATE()) AS txn_date,
         TIMEADD(SECOND, UNIFORM(0, 86399, RANDOM()), '00:00:00'::TIME) AS txn_time,
         UNIFORM(1, 34, RANDOM())              AS merchant_idx,
         UNIFORM(0, 99, RANDOM())              AS type_rand,
         UNIFORM(0, 99, RANDOM())              AS status_rand,
         UNIFORM(0, 99, RANDOM())              AS channel_rand
-    FROM TABLE(GENERATOR(ROWCOUNT => 500000))
+    FROM TABLE(GENERATOR(ROWCOUNT => 5000000))
 ),
 enriched AS (
     SELECT
@@ -553,6 +554,9 @@ SELECT
     ELSE NULL END                           AS counterparty_acct,
     CURRENT_TIMESTAMP()                     AS created_at
 FROM enriched;
+
+-- Scale the warehouse back down
+ALTER WAREHOUSE NORTHBRIDGE_WH SET WAREHOUSE_SIZE = 'X-SMALL';
 
 -- =============================================================================
 -- Verify row counts

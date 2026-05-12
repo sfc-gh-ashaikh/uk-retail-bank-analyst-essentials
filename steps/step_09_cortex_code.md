@@ -19,9 +19,8 @@ Alternatively, type a natural language comment directly in the worksheet -- Cort
 
 Type the following comment into your worksheet and invoke Cortex Code:
 
-```sql
--- Show me the top 10 customers by total account balance,
--- with their segment and number of accounts
+```
+Show me the top 10 customers by total account balance with their segment and number of accounts
 ```
 
 Cortex Code will suggest a SQL query. Review it, then run it. Compare the output with your `V_CUSTOMER_SUMMARY` view:
@@ -74,11 +73,8 @@ Run both versions and compare execution times in Query History.
 
 Type the following comment and let Cortex Code generate the SQL:
 
-```sql
--- Write a query to find customers whose spending pattern changed significantly
--- month-over-month. Compare each customer's total debit transactions in the most
--- recent complete month to the month before, and flag anyone whose spending
--- increased or decreased by more than 50%
+```
+Write a query to find customers whose spending pattern changed significantly month-over-month. Compare each customer's total debit transactions in the most recent complete month to the month before, and flag anyone whose spending increased or decreased by more than 50%
 ```
 
 Review the generated SQL. Does it:

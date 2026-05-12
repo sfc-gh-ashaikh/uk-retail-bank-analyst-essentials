@@ -48,7 +48,7 @@ All built against NorthBridge Bank's core dataset:
 ```
 PRODUCTS (20 rows)        CUSTOMERS (10,000 rows)
 ACCOUNTS (15,000 rows)    LOANS (3,000 rows)
-TRANSACTIONS (500,000 rows)
+TRANSACTIONS (5,000,000 rows)
 LCR_RUNOFF_RATES (25 rows -- loaded from CSV)
 ```
 
