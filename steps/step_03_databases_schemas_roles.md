@@ -124,7 +124,8 @@ Click the role selector in the top bar. Toggle between `SYSADMIN` and `PUBLIC`.
 Run the following to see your granted roles:
 
 ```sql
-SHOW GRANTS TO USER CURRENT_USER();
+SET my_user = CURRENT_USER();
+SHOW GRANTS TO USER IDENTIFIER($my_user);
 ```
 
 Switch back to `SYSADMIN` before continuing.
