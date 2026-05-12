@@ -689,7 +689,8 @@ SELECT
         LPAD((ABS(RANDOM()) % 90000000 + 10000000)::VARCHAR, 8, '0')
     ELSE NULL END                           AS counterparty_acct,
     CURRENT_TIMESTAMP()                     AS created_at
-FROM enriched;
+FROM enriched
+ORDER BY txn_date;
 
 -- Scale the warehouse back down
 ALTER WAREHOUSE NORTHBRIDGE_WH SET WAREHOUSE_SIZE = 'X-SMALL';
